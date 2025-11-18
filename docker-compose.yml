@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  cdnsbl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cdnsbl
+    restart: unless-stopped
+    
+    # Port mappings
+    ports:
+      - "5353:5353/udp"
+      # Uncomment for production on port 53 (requires privileged or NET_BIND_SERVICE capability)
+      # - "53:53/udp"
+    
+    # Environment variables (can also use env_file)
+    environment:
+      # Logging configuration
+      - LOGLEVEL=info
+      # Options: debug, info, warn, error
+      
+      # Backend selection (default: dbip)
+      - BACKEND=dbip
+      # Options:
+      #   dbip        - DB-IP Lite (no registration, updates monthly) [DEFAULT]
+      #   geoip       - MaxMind GeoLite2 (requires license key, updates weekly)
+      #   ipapi       - IP-API.com (no registration, real-time API, 45 req/min limit)
+      #   ipinfo      - IPInfo.io (requires token, MMDB or API mode, 50k req/month)
+      #   ip2location - IP2Location LITE (requires registration, updates monthly)
+      
+      # Data directory for databases
+      - DATA_DIR=/data
+      
+      # DNS server configuration
+      - DNS_LISTEN_ADDR=:5353
+      # For production on port 53: DNS_LISTEN_ADDR=:53 (requires CAP_NET_BIND_SERVICE)
+      - DNS_ZONE=cbl.home.lan
+      
+      # MaxMind GeoIP configuration (if using BACKEND=geoip)
+      # Sign up at: https://www.maxmind.com/en/geolite2/signup
+      # - GEOIP_LICENSE_KEY=your_license_key_here
+      # - GEOIP_ACCOUNT_ID=your_account_id_here
+      
+      # IPInfo.io configuration (if using BACKEND=ipinfo)
+      # Sign up at: https://ipinfo.io/signup
+      # - IPINFO_TOKEN=your_token_here
+      # - IPINFO_USE_API=false
+      # Uncomment IPINFO_USE_API=true to force API mode instead of MMDB database
+      
+      # IP2Location configuration (if using BACKEND=ip2location)
+      # Sign up at: https://lite.ip2location.com/sign-up
+      # - IP2LOCATION_TOKEN=your_token_here
+      # Token is optional, for automatic monthly database updates
+    
+    # Alternative: use env file
+    # env_file:
+    #   - .env
+    
+    # Volume for persistent database storage
+    volumes:
+      - cdnsbl-data:/data
+      # Uncomment to use custom .env file
+      # - ./.env:/app/.env:ro
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 2 sh -c 'echo > /dev/udp/127.0.0.1/5353' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    
+    # Uncomment for production on port 53
+    # cap_add:
+    #   - NET_BIND_SERVICE
+
+# Named volume for database persistence
+volumes:
+  cdnsbl-data:

@@ -1,0 +1,18 @@
+# Docker-specific ignores
+data/
+.env
+*.mmdb
+cdnsbl
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+
+# Development
+*.log
+*.tmp
+.DS_Store
