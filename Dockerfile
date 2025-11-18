@@ -13,6 +13,9 @@ COPY . .
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o cdnsbl .
 
+# Create empty data directory for the final stage
+RUN mkdir -p /data && chown 65532:65532 /data
+
 # Final stage - distroless
 FROM gcr.io/distroless/static-debian12:nonroot
 
@@ -24,10 +27,12 @@ COPY --from=builder /build/cdnsbl /app/cdnsbl
 # Copy .env.example as reference (actual .env should be mounted)
 COPY --from=builder /build/.env.example /app/.env.example
 
+# Copy data directory with proper ownership
+COPY --from=builder --chown=65532:65532 /data /data
+
 # Set data directory for Docker
 ENV DATA_DIR=/data
 
-# Create data directory for databases
 USER nonroot:nonroot
 
 # Expose DNS port
