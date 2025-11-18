@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/oschwald/maxminddb-golang v1.13.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.40.0 // indirect

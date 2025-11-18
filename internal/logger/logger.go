@@ -20,6 +20,21 @@ import (
 	"strings"
 )
 
+// ANSI color codes
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorBlue   = "\033[34m"
+	colorCyan   = "\033[36m"
+
+	// Background colors for log levels
+	bgRed    = "\033[41m\033[97m" // red background, white text
+	bgYellow = "\033[43m\033[30m" // yellow background, black text
+	bgBlue   = "\033[44m\033[97m" // blue background, white text
+	bgCyan   = "\033[46m\033[30m" // cyan background, black text
+)
+
 var Log *slog.Logger
 
 // Init initializes the global logger based on LOGLEVEL environment variable.
@@ -50,10 +65,10 @@ func getLogLevel() slog.Level {
 
 // CustomHandler implements slog.Handler with custom formatting.
 type CustomHandler struct {
-	out     io.Writer
-	level   slog.Level
-	groups  []string
-	attrs   []slog.Attr
+	out    io.Writer
+	level  slog.Level
+	groups []string
+	attrs  []slog.Attr
 }
 
 // NewCustomHandler creates a new custom handler.
@@ -75,21 +90,45 @@ func (h *CustomHandler) Enabled(_ context.Context, level slog.Level) bool {
 
 // Handle formats and writes the log record.
 func (h *CustomHandler) Handle(_ context.Context, r slog.Record) error {
-	// Format: timestamp | LEVEL | [component] message
+	// Format: timestamp [LEVEL] [component] message
 	buf := make([]byte, 0, 256)
-	
+
 	// Timestamp (ISO 8601)
 	buf = append(buf, r.Time.Format("2006-01-02T15:04:05.000Z07:00")...)
-	buf = append(buf, " | "...)
-	
-	// Level
-	buf = append(buf, r.Level.String()...)
-	buf = append(buf, " | "...)
-	
+	buf = append(buf, " "...)
+
+	// Level with color - no padding
+	levelStr := r.Level.String()
+
+	// Color codes based on level
+	var color string
+	switch r.Level {
+	case slog.LevelDebug:
+		color = bgCyan // cyan background for debug
+	case slog.LevelInfo:
+		color = bgBlue // blue background for info
+	case slog.LevelWarn:
+		color = bgYellow // yellow background for warn
+	case slog.LevelError:
+		color = bgRed // red background for error
+	default:
+		color = colorReset
+	}
+
+	// Add colored level with square bracket delimiters
+	buf = append(buf, color...)
+	buf = append(buf, '[')
+	buf = append(buf, ' ')
+	buf = append(buf, levelStr...)
+	buf = append(buf, ' ')
+	buf = append(buf, ']')
+	buf = append(buf, colorReset...)
+	buf = append(buf, ' ')
+
 	// Find component from handler attrs (set by WithAttrs) or record attrs
 	component := ""
 	otherAttrs := make([]slog.Attr, 0, len(h.attrs)+r.NumAttrs())
-	
+
 	// Check handler attrs first (from With())
 	for _, a := range h.attrs {
 		if a.Key == "component" {
@@ -98,7 +137,7 @@ func (h *CustomHandler) Handle(_ context.Context, r slog.Record) error {
 			otherAttrs = append(otherAttrs, a)
 		}
 	}
-	
+
 	// Then check record attrs
 	r.Attrs(func(a slog.Attr) bool {
 		if a.Key == "component" && component == "" {
@@ -108,17 +147,17 @@ func (h *CustomHandler) Handle(_ context.Context, r slog.Record) error {
 		}
 		return true
 	})
-	
+
 	// Component tag
 	if component != "" {
 		buf = append(buf, '[')
 		buf = append(buf, component...)
 		buf = append(buf, "] "...)
 	}
-	
+
 	// Message
 	buf = append(buf, r.Message...)
-	
+
 	// Additional attributes
 	for _, a := range otherAttrs {
 		buf = append(buf, ' ')
@@ -126,7 +165,7 @@ func (h *CustomHandler) Handle(_ context.Context, r slog.Record) error {
 		buf = append(buf, '=')
 		buf = append(buf, a.Value.String()...)
 	}
-	
+
 	buf = append(buf, '\n')
 	_, err := h.out.Write(buf)
 	return err
@@ -137,7 +176,7 @@ func (h *CustomHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	newAttrs := make([]slog.Attr, len(h.attrs)+len(attrs))
 	copy(newAttrs, h.attrs)
 	copy(newAttrs[len(h.attrs):], attrs)
-	
+
 	return &CustomHandler{
 		out:    h.out,
 		level:  h.level,
@@ -151,7 +190,7 @@ func (h *CustomHandler) WithGroup(name string) slog.Handler {
 	newGroups := make([]string, len(h.groups)+1)
 	copy(newGroups, h.groups)
 	newGroups[len(h.groups)] = name
-	
+
 	return &CustomHandler{
 		out:    h.out,
 		level:  h.level,

@@ -80,10 +80,10 @@ func (c *Client) ensureDatabase() error {
 		info, _ := os.Stat(c.dbPath)
 		age := time.Since(info.ModTime())
 		if age < 30*24*time.Hour {
-			c.log.Info("Using existing IP2Location database", "age", age.Round(time.Hour).String())
+			c.log.Info("Using existing IP2Location database", "age", formatDuration(age))
 			return nil
 		}
-		c.log.Info("IP2Location database is old, downloading new version", "age", age.Round(time.Hour).String())
+		c.log.Info("IP2Location database is old, downloading new version", "age", formatDuration(age))
 	}
 
 	if c.token == "" {
@@ -192,7 +192,7 @@ func (c *Client) updateDatabase() error {
 	if err == nil {
 		age := time.Since(info.ModTime())
 		if age < 25*24*time.Hour {
-			c.log.Debug("IP2Location database is recent, skipping update", "age", age.Round(time.Hour).String())
+			c.log.Debug("IP2Location database is recent, skipping update", "age", formatDuration(age))
 			return nil
 		}
 	}
@@ -220,4 +220,19 @@ func (c *Client) updateDatabase() error {
 
 	c.log.Info("IP2Location database updated and reloaded successfully")
 	return nil
+}
+
+// formatDuration formats a duration in a human-readable way
+func formatDuration(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%.0fs", d.Seconds())
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%.0fm", d.Minutes())
+	}
+	if d < 24*time.Hour {
+		return fmt.Sprintf("%.1fh", d.Hours())
+	}
+	days := d.Hours() / 24
+	return fmt.Sprintf("%.1fd", days)
 }
