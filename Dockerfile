@@ -25,7 +25,7 @@ WORKDIR /app
 COPY --from=builder /build/cdnsbl /app/cdnsbl
 
 # Copy .env.example as reference (actual .env should be mounted)
-COPY --from=builder /build/.env.example /app/.env.example
+COPY --from=builder /data/.env.example /data/.env.example
 
 # Copy data directory with proper ownership
 COPY --from=builder --chown=65532:65532 /data /data
