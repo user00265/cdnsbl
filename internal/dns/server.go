@@ -12,8 +12,9 @@
 //	9.48.252.210.jp.cbl.home.lan
 //
 // Response:
-//   - 127.0.0.1 if the IP is in the queried country
-//   - NXDOMAIN if the IP is not in the queried country
+//   - 127.0.0.1 if the IP is in the queried country (LISTED)
+//   - NXDOMAIN if the IP is not in the queried country or entry doesn't exist (NOT LISTED)
+//   - SERVFAIL if the query cannot be parsed or understood
 //
 // Only A record queries are supported. All other query types return NOTIMPL.
 package dns
@@ -104,15 +105,17 @@ func (s *Server) handleQuery(w dns.ResponseWriter, r *dns.Msg) {
 
 	ip, countryCode, err := s.parseQuery(qname)
 	if err != nil {
-		// Silently return NXDOMAIN for invalid formats (e.g., zone-only queries)
-		m.SetRcode(r, dns.RcodeNameError)
+		// Return SERVFAIL for queries that cannot be parsed/understood
+		s.log.Debug("Query parse error", "query", qname, "error", err)
+		m.SetRcode(r, dns.RcodeServerFailure)
 		w.WriteMsg(m)
 		return
 	}
 
 	actualCountry, err := s.backend.LookupCountry(ip)
 	if err != nil {
-		s.log.Warn("Backend lookup failed", "ip", ip.String(), "error", err)
+		// Return NXDOMAIN for IPs not found in the database (not listed)
+		s.log.Debug("IP not found in database", "ip", ip.String(), "error", err)
 		m.SetRcode(r, dns.RcodeNameError)
 		w.WriteMsg(m)
 		return
