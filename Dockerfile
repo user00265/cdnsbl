@@ -24,11 +24,11 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /build/cdnsbl /app/cdnsbl
 
-# Copy .env.example as reference (actual .env should be mounted)
-COPY --from=builder /data/.env.example /data/.env.example
-
 # Copy data directory with proper ownership
 COPY --from=builder --chown=65532:65532 /data /data
+
+# Copy .env.example as reference (actual .env should be mounted)
+COPY --from=builder /build/.env.example /data/.env.example
 
 # Set data directory for Docker
 ENV DATA_DIR=/data
