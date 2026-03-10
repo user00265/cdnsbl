@@ -16,8 +16,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflag
 # Create empty data directory for the final stage
 RUN mkdir -p /data && chown 65532:65532 /data
 
-# Final stage - distroless
-FROM gcr.io/distroless/static-debian12:nonroot
+# Final stage
+# Chainguard static: zero known CVEs, rebuilt nightly, non-root by default,
+# includes CA certificates for HTTPS. No shell, no package manager.
+FROM cgr.dev/chainguard/static:latest
 
 WORKDIR /app
 
@@ -32,8 +34,6 @@ COPY --from=builder /build/.env.example /data/.env.example
 
 # Set data directory for Docker
 ENV DATA_DIR=/data
-
-USER nonroot:nonroot
 
 # Expose DNS port
 EXPOSE 53/udp
